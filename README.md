@@ -27,56 +27,58 @@ Welcome to the ultimate, end-to-end interview preparation repository. This repos
 6. **[Modern Python Web Stack](file:///c:/MachineLearning/Python_interview_questions/08_FastAPI/)**
    - [FastAPI Theory](file:///c:/MachineLearning/Python_interview_questions/08_FastAPI/fastapi_theory.md) | [FastAPI Coding](file:///c:/MachineLearning/Python_interview_questions/08_FastAPI/fastapi_coding.md)
    - [Pydantic V2 (Rust Core)](file:///c:/MachineLearning/Python_interview_questions/07_Pydantic/pydantic_theory.md)
-   - [SQLAlchemy 2.0 (ORM & Async)](file:///c:/MachineLearning/Python_interview_questions/09_SQLAlchemy/sqlalchemy_theory.md)
+   - [SQLAlchemy 2.0 (ORM & Async)](file:///c:/MachineLearning/Python_interview_questions/09_SQLAlchemy/sqlalchemy_theory.md) | [SQLAlchemy Coding (Async & N+1)](file:///c:/MachineLearning/Python_interview_questions/09_SQLAlchemy/sqlalchemy_coding.md)
    - [API Design (REST, Webhooks, SSE)](file:///c:/MachineLearning/Python_interview_questions/10_API_Design/api_design_theory.md)
+7. **[Testing & Pytest](file:///c:/MachineLearning/Python_interview_questions/34_Testing_Pytest/)**
+   - [Testing Theory (Pyramid & Fixtures)](file:///c:/MachineLearning/Python_interview_questions/34_Testing_Pytest/testing_theory.md) | [Testing Coding (Mocking & TestClient)](file:///c:/MachineLearning/Python_interview_questions/34_Testing_Pytest/testing_coding.md)
 
 ### System Design
-7. **[Core System Design](file:///c:/MachineLearning/Python_interview_questions/11_System_Design/)**
+8. **[Core System Design](file:///c:/MachineLearning/Python_interview_questions/11_System_Design/)**
    - [Theory (CAP, Load Balancing)](file:///c:/MachineLearning/Python_interview_questions/11_System_Design/system_design_theory.md)
    - [Architectural Problems (TinyURL, Netflix)](file:///c:/MachineLearning/Python_interview_questions/11_System_Design/system_design_problems.md)
-8. **[AI System Design](file:///c:/MachineLearning/Python_interview_questions/23_System_Design_RAG/)**
+9. **[AI System Design](file:///c:/MachineLearning/Python_interview_questions/23_System_Design_RAG/)**
    - [ML System Design (RecSys, Fraud)](file:///c:/MachineLearning/Python_interview_questions/25_System_Design_ML/ml_system_design.md)
    - [RAG System Design](file:///c:/MachineLearning/Python_interview_questions/23_System_Design_RAG/rag_system_design.md)
    - [Agentic AI System Design](file:///c:/MachineLearning/Python_interview_questions/24_System_Design_Agents/agent_system_design.md)
 
 ### Machine Learning & Data Science
-9. **[Classical ML](file:///c:/MachineLearning/Python_interview_questions/14_Machine_Learning/)**
-   - [ML Theory (Bias/Variance, Ensembles)](file:///c:/MachineLearning/Python_interview_questions/14_Machine_Learning/ml_theory.md) | [ML Coding (NumPy)](file:///c:/MachineLearning/Python_interview_questions/14_Machine_Learning/ml_coding.md)
-10. **[Deep Learning](file:///c:/MachineLearning/Python_interview_questions/15_Deep_Learning/)**
+10. **[Classical ML](file:///c:/MachineLearning/Python_interview_questions/14_Machine_Learning/)**
+    - [ML Theory (Bias/Variance, Ensembles)](file:///c:/MachineLearning/Python_interview_questions/14_Machine_Learning/ml_theory.md) | [ML Coding (NumPy)](file:///c:/MachineLearning/Python_interview_questions/14_Machine_Learning/ml_coding.md)
+11. **[Deep Learning](file:///c:/MachineLearning/Python_interview_questions/15_Deep_Learning/)**
     - [DL Theory (CNNs, LSTMs, Adam)](file:///c:/MachineLearning/Python_interview_questions/15_Deep_Learning/dl_theory.md) | [DL Coding (PyTorch)](file:///c:/MachineLearning/Python_interview_questions/15_Deep_Learning/dl_coding.md)
-11. **[Natural Language Processing (NLP)](file:///c:/MachineLearning/Python_interview_questions/16_NLP/)**
+12. **[Natural Language Processing (NLP)](file:///c:/MachineLearning/Python_interview_questions/16_NLP/)**
     - [NLP Theory (Attention, BERT/GPT)](file:///c:/MachineLearning/Python_interview_questions/16_NLP/nlp_theory.md) | [NLP Coding (Self-Attention)](file:///c:/MachineLearning/Python_interview_questions/16_NLP/nlp_coding.md)
 
 ### Generative AI & Agentic AI
-12. **[LLM Ecosystem](file:///c:/MachineLearning/Python_interview_questions/17_Hugging_Face/)**
-    - [Hugging Face (PEFT, Quantization)](file:///c:/MachineLearning/Python_interview_questions/17_Hugging_Face/huggingface_theory.md) | [Hugging Face Coding](file:///c:/MachineLearning/Python_interview_questions/17_Hugging_Face/huggingface_coding.md)
+13. **[LLM Ecosystem](file:///c:/MachineLearning/Python_interview_questions/17_Hugging_Face/)**
+    - [Hugging Face Theory (PEFT, Quantization)](file:///c:/MachineLearning/Python_interview_questions/17_Hugging_Face/huggingface_theory.md) | [Hugging Face Coding (LoRA)](file:///c:/MachineLearning/Python_interview_questions/17_Hugging_Face/huggingface_coding.md)
     - [Prompt Engineering (CoT, ToT)](file:///c:/MachineLearning/Python_interview_questions/18_Prompt_Engineering/prompt_engineering_theory.md)
     - [LangChain Theory & LCEL](file:///c:/MachineLearning/Python_interview_questions/19_LangChain/langchain_theory.md) | [LangChain Coding](file:///c:/MachineLearning/Python_interview_questions/19_LangChain/langchain_coding.md)
     - [LangGraph Theory](file:///c:/MachineLearning/Python_interview_questions/20_LangGraph/langgraph_theory.md) | [LangGraph Coding (ReAct loops)](file:///c:/MachineLearning/Python_interview_questions/20_LangGraph/langgraph_coding.md)
-13. **[Generative AI Architecture](file:///c:/MachineLearning/Python_interview_questions/21_Gen_AI/)**
+14. **[Generative AI Architecture](file:///c:/MachineLearning/Python_interview_questions/21_Gen_AI/)**
     - [Gen AI Theory (RLHF, MoE, KV Cache)](file:///c:/MachineLearning/Python_interview_questions/21_Gen_AI/genai_theory.md)
     - [RAG Real-World Scenarios](file:///c:/MachineLearning/Python_interview_questions/21_Gen_AI/genai_rag_scenarios.md)
-    - [Advanced Topics (RoPE, DSPy, LLaVA)](file:///c:/MachineLearning/Python_interview_questions/21_Gen_AI/genai_advanced.md)
-14. **[Agentic AI Architectures](file:///c:/MachineLearning/Python_interview_questions/22_Agentic_AI/)**
+    - [Advanced Topics (RoPE, DSPy, LLaVA, KV Cache Math)](file:///c:/MachineLearning/Python_interview_questions/21_Gen_AI/genai_advanced.md)
+15. **[Agentic AI Architectures](file:///c:/MachineLearning/Python_interview_questions/22_Agentic_AI/)**
     - [Agentic Theory (ReAct vs Plan/Execute)](file:///c:/MachineLearning/Python_interview_questions/22_Agentic_AI/agentic_ai_theory.md)
     - [Agentic Real-World Scenarios](file:///c:/MachineLearning/Python_interview_questions/22_Agentic_AI/agentic_ai_scenarios.md)
 
 ### Information Retrieval & Evaluation
-15. **[Vector Databases & Evaluation](file:///c:/MachineLearning/Python_interview_questions/26_Vector_Databases/)**
-    - [Vector DB Theory (HNSW, Metrics)](file:///c:/MachineLearning/Python_interview_questions/26_Vector_Databases/vector_databases_theory.md)
+16. **[Vector Databases & Evaluation](file:///c:/MachineLearning/Python_interview_questions/26_Vector_Databases/)**
+    - [Vector DB Theory (HNSW, Hybrid Search, ColBERT)](file:///c:/MachineLearning/Python_interview_questions/26_Vector_Databases/vector_databases_theory.md)
     - [Chunking Strategies](file:///c:/MachineLearning/Python_interview_questions/27_Chunking/chunking_strategies.md)
-    - [Evaluation Frameworks (RAGAS, LLM-as-a-Judge)](file:///c:/MachineLearning/Python_interview_questions/28_Evaluation/evaluation_theory.md)
+    - [Evaluation Frameworks (RAGAS, LLM-as-a-Judge)](file:///c:/MachineLearning/Python_interview_questions/28_Evaluation/evaluation_theory.md) | [Evaluation Coding (Trajectories)](file:///c:/MachineLearning/Python_interview_questions/28_Evaluation/evaluation_coding.md)
 
 ### Deployment & Infrastructure
-16. **[MLOps & Cloud](file:///c:/MachineLearning/Python_interview_questions/29_MLOps/)**
+17. **[MLOps & Cloud](file:///c:/MachineLearning/Python_interview_questions/29_MLOps/)**
     - [MLOps Theory (MLflow, Data Drift)](file:///c:/MachineLearning/Python_interview_questions/29_MLOps/mlops_theory.md)
     - [Docker Theory (Images, Layers)](file:///c:/MachineLearning/Python_interview_questions/30_Docker_Kubernetes/docker_theory.md)
     - [Kubernetes Theory (Pods, HPA)](file:///c:/MachineLearning/Python_interview_questions/30_Docker_Kubernetes/kubernetes_theory.md)
     - [Deployment Strategies (Blue-Green, ONNX)](file:///c:/MachineLearning/Python_interview_questions/31_Deployment/deployment_theory.md)
-    - [GCP for ML (Vertex AI, BQML)](file:///c:/MachineLearning/Python_interview_questions/32_GCP/gcp_theory.md)
+    - [GCP for ML (Vertex AI, BQML)](file:///c:/MachineLearning/Python_interview_questions/32_GCP/gcp_theory.md) | [GCP Coding (Vertex AI)](file:///c:/MachineLearning/Python_interview_questions/32_GCP/gcp_coding.md)
 
 ### Leadership & Soft Skills
-17. **[Behavioral & Leadership](file:///c:/MachineLearning/Python_interview_questions/33_Behavioral/)**
+18. **[Behavioral & Leadership](file:///c:/MachineLearning/Python_interview_questions/33_Behavioral/)**
     - [The STAR Method & Situational Questions](file:///c:/MachineLearning/Python_interview_questions/33_Behavioral/behavioral_questions.md)
 
 ---

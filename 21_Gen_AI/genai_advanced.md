@@ -1,6 +1,6 @@
 # Generative AI — Advanced Topics
 
-> Deep dive into advanced Gen AI concepts: Speculative Decoding, Multi-Modal architectures, Long-Context scaling (RoPE), and RAG evaluation frameworks.
+> Deep dive into advanced Gen AI concepts: KV Cache Math, Inference Servers (vLLM), Speculative Decoding, Multi-Modal architectures, Long-Context scaling (RoPE), and next-gen frameworks like DSPy.
 
 ---
 
@@ -46,7 +46,47 @@ Frameworks like **RAGAS** (Retrieval Augmented Generation Assessment) use LLMs a
 
 ## 🔴 Hard (Advanced / MAANG-level)
 
-### Q3: How do models scale context windows? Explain RoPE (Rotary Position Embeddings).
+### Q3: LLM Inference Math — How do you estimate KV Cache Memory?
+
+**Answer:**
+
+A classic MAANG System Design question: *"How much VRAM do you need to serve a model?"*
+
+During text generation, the LLM caches the Key and Value matrices of previous tokens to avoid recomputing them. This is the **KV Cache**. As the sequence grows, the KV cache grows linearly, often consuming more memory than the model weights themselves!
+
+**The KV Cache Equation:**
+Memory per token (in bytes) = $2 \times \text{Layers} \times \text{Heads} \times \text{Head\_Dim} \times \text{Bytes\_per\_parameter}$
+* Note: The $2$ is because we store both Keys and Values.
+* Note: $\text{Heads} \times \text{Head\_Dim} = \text{Hidden\_Size}$.
+
+**Example for LLaMA-3 8B (FP16):**
+- Layers: 32
+- Hidden Size: 4096
+- Bytes per parameter (FP16): 2 bytes
+- **Memory per token** = $2 \times 32 \times 4096 \times 2 = 524,288$ bytes (approx 0.5 MB).
+
+If you have a batch size of 32 requests, and each request has a context window of 4,000 tokens:
+- **Total KV Cache Size** = $32 \text{ batch} \times 4000 \text{ tokens} \times 0.5 \text{ MB} = 64 \text{ GB of VRAM!}$
+*(This is why 8B models require massive GPUs in production, not just to hold the 16GB of weights, but to hold the massive KV cache).*
+
+---
+
+### Q4: What is vLLM, PagedAttention, and Continuous Batching?
+
+**Answer:**
+
+Standard PyTorch/HuggingFace is highly inefficient for serving LLMs to hundreds of concurrent users. Production relies on specialized Inference Servers like **vLLM** or **TGI**.
+
+1. **Continuous Batching:** 
+   - Standard batching waits for all requests in a batch to finish generating before starting a new batch. If one user requests a 10-word summary and another requests a 1000-word essay, the GPU sits idle waiting for the essay to finish.
+   - Continuous Batching injects new requests into the batch the exact millisecond an old request finishes, keeping GPU utilization at nearly 100%.
+2. **PagedAttention:**
+   - Because we don't know how long a user's prompt or response will be, standard inference pre-allocates contiguous chunks of VRAM for the maximum possible KV cache length (e.g., 4K tokens). This results in massive memory fragmentation (wasted VRAM).
+   - Inspired by OS Virtual Memory, PagedAttention divides the KV Cache into fixed-size "pages" (e.g., 16 tokens). Memory is allocated dynamically, page-by-page, as generation occurs, virtually eliminating fragmentation and allowing you to fit 2x-4x more concurrent users on a single GPU.
+
+---
+
+### Q5: How do models scale context windows? Explain RoPE (Rotary Position Embeddings).
 
 **Answer:**
 
@@ -59,7 +99,7 @@ Instead of adding a fixed vector, RoPE *rotates* the Query and Key vectors in a 
 
 ---
 
-### Q4: Explain Multi-Modal Architectures (e.g., LLaVA, GPT-4V).
+### Q6: Explain Multi-Modal Architectures (e.g., LLaVA, GPT-4V).
 
 **Answer:**
 
@@ -72,7 +112,7 @@ How does an LLM "see" an image? It doesn't use standard text tokenizers. It uses
 
 ---
 
-### Q5: What is DSPy and how does it differ from LangChain?
+### Q7: What is DSPy and how does it differ from LangChain?
 
 **Answer:**
 
@@ -84,4 +124,4 @@ How does an LLM "see" an image? It doesn't use standard text tokenizers. It uses
 
 ---
 
-*End of Generative AI Advanced Topics — Deep dives into inference optimization (Speculative Decoding), context scaling (RoPE), Multi-modal architectures, and next-gen frameworks like DSPy.*
+*End of Generative AI Advanced Topics — Deep dives into inference optimization (vLLM, KV Cache, Speculative Decoding), context scaling (RoPE), Multi-modal architectures, and next-gen frameworks like DSPy.*

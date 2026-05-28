@@ -1,6 +1,6 @@
 # Hugging Face — Coding Patterns
 
-> Practical implementation of Hugging Face `transformers` library, including Pipelines, Tokenizer manipulation, and basic training loops.
+> Practical implementation of Hugging Face `transformers` library, including Pipelines, Tokenizer manipulation, basic training loops, and Advanced Parameter-Efficient Fine-Tuning (PEFT/LoRA).
 
 ---
 
@@ -127,4 +127,48 @@ print(generated_text)
 
 ---
 
-*End of Hugging Face Coding — Covers basic Pipelines, manual tokenization/tensor manipulation, and advanced text generation algorithms.*
+### Q4: Implement LoRA (Low-Rank Adaptation) using the PEFT library.
+
+**Answer:**
+
+Fine-tuning a 7B parameter model requires massive VRAM because you have to calculate gradients and optimizer states for all 7 Billion weights. **LoRA** (Low-Rank Adaptation) freezes the original model weights and injects tiny, trainable "Low Rank Matrices" into the Attention layers. You end up training less than 1% of the parameters, saving massive VRAM and compute.
+
+```python
+import torch
+from transformers import AutoModelForCausalLM, AutoTokenizer
+from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
+
+model_name = "meta-llama/Llama-2-7b-hf"
+
+# 1. Load the original model (Normally you'd load in 8-bit or 4-bit here for QLoRA)
+model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto")
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+
+# 2. Prepare for int8/int4 training (if doing QLoRA)
+# model = prepare_model_for_kbit_training(model)
+
+# 3. Define LoRA Configuration
+lora_config = LoraConfig(
+    r=16,                       # Rank: The dimension of the low-rank matrices. (Higher = more parameters to train)
+    lora_alpha=32,              # Scaling factor for the LoRA weights.
+    target_modules=["q_proj", "v_proj"], # Which layers to inject LoRA into (usually Query and Value projections in Attention).
+    lora_dropout=0.05,
+    bias="none",
+    task_type="CAUSAL_LM"
+)
+
+# 4. Wrap the base model with PEFT
+peft_model = get_peft_model(model, lora_config)
+
+# Print trainable parameters to prove we are only training a fraction of the model!
+peft_model.print_trainable_parameters()
+# Example Output: trainable params: 8,388,608 || all params: 6,746,804,224 || trainable%: 0.1243%
+
+# 5. From here, you pass `peft_model` to standard Hugging Face Trainer
+# trainer = Trainer(model=peft_model, ...)
+# trainer.train()
+```
+
+---
+
+*End of Hugging Face Coding — Covers basic Pipelines, manual tokenization/tensor manipulation, advanced text generation, and PEFT/LoRA.*

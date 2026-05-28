@@ -1,6 +1,6 @@
 # Vector Databases — Theory & Architecture
 
-> Under the hood of Vector Databases: HNSW indexing, Cosine Similarity vs Dot Product, Metadata Filtering, and system architecture.
+> Under the hood of Vector Databases: HNSW indexing, Cosine Similarity vs Dot Product, Metadata Filtering, Hybrid Search, Multi-Vector Retrieval (ColBERT), and system architecture.
 
 ---
 
@@ -103,7 +103,35 @@ Databases like Pinecone and Qdrant use custom algorithms that evaluate metadata 
 
 ---
 
-### Q6: Compare popular Vector Databases (Pinecone vs Milvus vs pgvector).
+### Q6: What is Hybrid Search? (Dense vs Sparse Vectors)
+
+**Answer:**
+
+Pure vector search (Dense retrieval) is amazing at semantic meaning, but terrible at exact keyword matching (e.g., searching for a specific product ID like "XY-900"). 
+
+**Hybrid Search** combines two algorithms:
+1. **Dense Vectors (Cosine Similarity):** Catches meaning ("apple" matches "fruit").
+2. **Sparse Vectors (BM25 / TF-IDF):** Catches exact keywords. BM25 is the algorithm behind Elasticsearch.
+
+The Vector Database runs both searches simultaneously, normalizes the scores, and merges them using algorithms like **Reciprocal Rank Fusion (RRF)**. RRF penalizes items that only score well in one list, and rewards items that appear near the top of both the Dense and Sparse lists.
+
+---
+
+### Q7: Explain Multi-Vector Retrieval and ColBERT.
+
+**Answer:**
+
+Standard embeddings (like OpenAI `text-embedding-ada-002`) compress an entire 500-word chunk into a *single* vector. This causes an informational bottleneck (a lot of nuance is crushed into one point in space).
+
+**ColBERT (Contextualized Late Interaction over BERT)** changes this:
+1. **Multi-Vector:** Instead of one vector per chunk, ColBERT generates a vector for *every single token* in the chunk.
+2. **Late Interaction:** When a user queries, the query is also token-embedded. During the search, ColBERT compares the query's token-vectors against the document's token-vectors using MaxSim (Maximum Similarity) operations.
+
+*Trade-off:* ColBERT provides dramatically higher recall and accuracy than standard single-vector embeddings, but it consumes massively more storage space (storing vectors per token rather than per chunk) and requires heavier compute during inference.
+
+---
+
+### Q8: Compare popular Vector Databases (Pinecone vs Milvus vs pgvector).
 
 **Answer:**
 
@@ -116,4 +144,4 @@ Databases like Pinecone and Qdrant use custom algorithms that evaluate metadata 
 
 ---
 
-*End of Vector Databases Theory — 6 advanced questions covering distance metrics, ANN algorithms, HNSW graphs, and metadata filtering.*
+*End of Vector Databases Theory — Covers distance metrics, ANN algorithms, HNSW graphs, metadata filtering, Hybrid Search, and ColBERT.*
