@@ -267,5 +267,31 @@ Where `pos` = position in the sequence, `i` = dimension index, `d_model` = embed
 
 ---
 
-*End of NLP Theory — 15 comprehensive questions covering Tokenization algorithms, Embeddings, Attention, Transformers, Flash Attention, BERT vs GPT, Multi-Head Attention math, Positional Encodings, Layer Normalization, and evaluation metrics.*
+### Q16: Explain the three main Transformer Architectures: Encoder-only, Decoder-only, and Encoder-Decoder.
+
+**Answer:**
+
+While the original 2017 Transformer contained both an Encoder and a Decoder, modern NLP models typically drop one of these components depending on the required task.
+
+**1. Encoder-Only (e.g., BERT, RoBERTa, ALBERT)**
+- **How it works:** Uses **Bidirectional Self-Attention**. Every token attends to all other tokens (past and future) simultaneously to build a rich representation of the entire sequence.
+- **Pre-training Objective:** Masked Language Modeling (MLM). 15% of the words are randomly masked, and the model learns to predict them based on the surrounding context.
+- **Strengths:** Deep Natural Language Understanding (NLU).
+- **Use Cases:** Text classification, Sentiment Analysis, Named Entity Recognition (NER), Extractive Question Answering (finding the answer span within a document).
+
+**2. Decoder-Only (e.g., GPT-4, LLaMA 3, Claude 3)**
+- **How it works:** Uses **Causal (Masked) Self-Attention**. A token can only look at *past* tokens. Future tokens are mathematically masked out (set to negative infinity before softmax) to prevent cheating.
+- **Pre-training Objective:** Next-Token Prediction (Causal Language Modeling). Given tokens 1 to $N$, predict token $N+1$.
+- **Strengths:** Natural Language Generation (NLG). It perfectly mimics how text is generated sequentially.
+- **Use Cases:** Chatbots, open-ended text generation, code generation, instruction following. *(Note: Almost all modern "Generative AI" LLMs use this architecture).*
+
+**3. Encoder-Decoder (e.g., T5, BART, Original Transformer)**
+- **How it works:** Uses both stacks. The **Encoder** processes the input sequence bidirectionally. The **Decoder** generates the output sequence autoregressively, using **Cross-Attention** to look back at the Encoder's hidden states during generation.
+- **Pre-training Objective:** Sequence-to-Sequence tasks (e.g., span corruption in T5, where multiple sequences of text are removed and the model must generate the missing spans).
+- **Strengths:** Tasks where the input and output have fundamentally different structures or are in different languages.
+- **Use Cases:** Machine Translation (e.g., English to French), Abstractive Summarization (rewriting an article into a shorter summary).
+
+---
+
+*End of NLP Theory — 16 comprehensive questions covering Tokenization algorithms, Embeddings, Attention, Transformers, Architecture Variants (Encoder vs Decoder), Flash Attention, BERT vs GPT, Multi-Head Attention math, Positional Encodings, Layer Normalization, and evaluation metrics.*
 

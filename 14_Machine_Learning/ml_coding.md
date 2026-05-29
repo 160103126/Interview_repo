@@ -325,4 +325,273 @@ class PCA:
 
 ---
 
+### Q7: Ridge Regression (L2 Regularization)
+
+**Problem:** Implement Ridge Regression using closed-form solution (Normal Equation).
+
+```python
+import numpy as np
+
+class RidgeRegression:
+    def __init__(self, alpha=1.0):
+        self.alpha = alpha
+        self.weights = None
+
+    def fit(self, X, y):
+        n_samples, n_features = X.shape
+        
+        # Add a column of ones for the bias term (intercept)
+        X_b = np.c_[np.ones((n_samples, 1)), X]
+        
+        # Identity matrix for regularization, size (n_features + 1) x (n_features + 1)
+        I = np.eye(n_features + 1)
+        
+        # Do not regularize the bias term (first element)
+        I[0, 0] = 0
+        
+        # Normal Equation with L2 penalty: w = (X^T * X + alpha * I)^-1 * X^T * y
+        matrix_inverse = np.linalg.inv(X_b.T.dot(X_b) + self.alpha * I)
+        self.weights = matrix_inverse.dot(X_b.T).dot(y)
+
+    def predict(self, X):
+        X_b = np.c_[np.ones((X.shape[0], 1)), X]
+        return X_b.dot(self.weights)
+```
+
+#### 🧠 Algorithmic Walkthrough & Explanation
+- **L2 Regularization:** Ridge regression adds a penalty term $\alpha \sum w_i^2$ to the loss function. This prevents weights from becoming too large, reducing overfitting (high variance).
+- **Closed-Form Solution:** Instead of gradient descent, we use the Normal Equation. By adding $\alpha I$ to $X^T X$, we guarantee the matrix is invertible, solving multicollinearity issues.
+- **Bias Term Trick:** We prepend a column of 1s to $X$ to compute the bias inside the weight vector, but we explicitly *don't* regularize the bias (by setting `I[0, 0] = 0`).
+
+#### ⏱️ Complexity
+- **Time Complexity:** $O(F^3)$ due to matrix inversion where $F$ is features.
+- **Space Complexity:** $O(F^2)$ to store intermediate matrices.
+
+---
+
+### Q8: Softmax Function (Numerically Stable)
+
+**Problem:** Implement a numerically stable Softmax function for multi-class classification.
+
+```python
+import numpy as np
+
+def softmax(logits):
+    """
+    Computes numerically stable softmax for a 2D array of logits.
+    logits shape: (batch_size, num_classes)
+    """
+    # Shift logits by subtracting the max value for numerical stability
+    # keepdims=True ensures the shape allows broadcasting (batch_size, 1)
+    shifted_logits = logits - np.max(logits, axis=1, keepdims=True)
+    
+    # Exponentiate
+    exp_logits = np.exp(shifted_logits)
+    
+    # Normalize by dividing by the sum of exponents
+    probabilities = exp_logits / np.sum(exp_logits, axis=1, keepdims=True)
+    
+    return probabilities
+
+# Example:
+logits = np.array([[1000, 1001, 1002]]) 
+# standard np.exp(1000) causes overflow (inf), but stable softmax handles it gracefully:
+print(softmax(logits)) # [[0.09 0.24 0.66]]
+```
+
+#### 🧠 Algorithmic Walkthrough & Explanation
+- **The Problem:** `np.exp(1000)` causes a float overflow (returns `inf`). If your neural network outputs large logits, standard softmax breaks.
+- **The Solution:** $e^{x_i} / \sum e^{x_j} = e^{x_i - c} / \sum e^{x_j - c}$. Subtracting the maximum logit $c$ from all logits makes the largest exponent $e^0 = 1$. The math remains mathematically identical, but guarantees no overflow.
+
+#### ⏱️ Complexity
+- **Time Complexity:** $O(N \times C)$ where $C$ is number of classes.
+- **Space Complexity:** $O(N \times C)$ for output probabilities.
+
+---
+
+### Q9: K-Fold Cross Validation Splitter
+
+**Problem:** Write a generator function that yields train/test indices for K-Fold Cross Validation.
+
+```python
+import numpy as np
+
+def k_fold_split(n_samples, k=5, shuffle=True, random_state=None):
+    indices = np.arange(n_samples)
+    
+    if shuffle:
+        if random_state is not None:
+            np.random.seed(random_state)
+        np.random.shuffle(indices)
+        
+    # Calculate sizes of each fold
+    fold_sizes = np.full(k, n_samples // k, dtype=int)
+    # Distribute remainders
+    fold_sizes[:n_samples % k] += 1
+    
+    current_idx = 0
+    for fold_size in fold_sizes:
+        start, stop = current_idx, current_idx + fold_size
+        
+        # Test indices for this fold
+        test_indices = indices[start:stop]
+        
+        # Train indices (everything else)
+        train_indices = np.concatenate((indices[:start], indices[stop:]))
+        
+        yield train_indices, test_indices
+        
+        current_idx = stop
+
+# Usage:
+# for train_idx, test_idx in k_fold_split(10, k=3):
+#     print(f"Train: {train_idx}, Test: {test_idx}")
+```
+
+#### 🧠 Algorithmic Walkthrough & Explanation
+- **The Math:** If $N=10$ and $K=3$, fold sizes should be `[4, 3, 3]`. We initialize all to $10 // 3 = 3$, and add $1$ to the first $10 \% 3 = 1$ folds.
+- **Generators:** Using `yield` saves memory compared to returning a massive list of arrays.
+
+---
+
+### Q10: One-Hot Encoding from Scratch
+
+**Problem:** Implement One-Hot Encoding for a 1D array of categorical integer labels.
+
+```python
+import numpy as np
+
+def one_hot_encode(labels, num_classes=None):
+    if num_classes is None:
+        num_classes = np.max(labels) + 1
+        
+    n_samples = len(labels)
+    
+    # Initialize a matrix of zeros
+    encoded = np.zeros((n_samples, num_classes))
+    
+    # Advanced indexing: 
+    # np.arange(n_samples) generates row indices [0, 1, 2...]
+    # labels provides column indices
+    encoded[np.arange(n_samples), labels] = 1.0
+    
+    return encoded
+
+# Example:
+labels = np.array([0, 2, 1, 0])
+# Output:
+# [[1. 0. 0.]
+#  [0. 0. 1.]
+#  [0. 1. 0.]
+#  [1. 0. 0.]]
+```
+
+#### 🧠 Algorithmic Walkthrough & Explanation
+- **Advanced Indexing:** Instead of using a slow `for` loop, we use NumPy advanced indexing `matrix[rows, cols] = 1`. This runs at C-speed and is essential for performant data pipelines.
+
+---
+
+### Q11: TF-IDF (Term Frequency - Inverse Document Frequency)
+
+**Problem:** Calculate TF-IDF matrix for a list of documents.
+
+```python
+import numpy as np
+from collections import Counter
+import math
+
+def compute_tfidf(corpus):
+    # 1. Tokenize and build vocabulary
+    tokenized_docs = [doc.lower().split() for doc in corpus]
+    vocab = list(set([word for doc in tokenized_docs for word in doc]))
+    vocab_size = len(vocab)
+    n_docs = len(corpus)
+    
+    # Map words to indices
+    word_to_idx = {word: i for i, word in enumerate(vocab)}
+    
+    tf = np.zeros((n_docs, vocab_size))
+    df = np.zeros(vocab_size)
+    
+    # 2. Compute TF (Term Frequency) and DF (Document Frequency)
+    for doc_idx, doc in enumerate(tokenized_docs):
+        doc_len = len(doc)
+        word_counts = Counter(doc)
+        
+        for word, count in word_counts.items():
+            word_idx = word_to_idx[word]
+            # TF: (word count in doc) / (total words in doc)
+            tf[doc_idx, word_idx] = count / doc_len
+            # DF: +1 if word appears in this doc
+            df[word_idx] += 1
+            
+    # 3. Compute IDF (Inverse Document Frequency)
+    # Adding +1 for smoothing (prevents division by zero)
+    idf = np.log((1 + n_docs) / (1 + df)) + 1
+    
+    # 4. Compute TF-IDF
+    tfidf = tf * idf
+    
+    # Optional: L2 Normalize each document vector
+    norms = np.linalg.norm(tfidf, axis=1, keepdims=True)
+    tfidf = tfidf / np.where(norms == 0, 1, norms)
+    
+    return tfidf, vocab
+
+# Usage:
+corpus = [
+    "the cat sat on the mat",
+    "the dog barked at the cat",
+    "the birds are flying"
+]
+tfidf_matrix, vocab = compute_tfidf(corpus)
+```
+
+#### 🧠 Algorithmic Walkthrough & Explanation
+- **TF:** Measures how often a word appears in a specific document.
+- **IDF:** Penalizes words that appear in *every* document (like "the", "and"). If a word is rare across the corpus, its IDF is high.
+- **L2 Normalization:** Ensures that longer documents don't artificially get higher scores just because they have more words.
+
+---
+
+### Q12: Neural Network Forward Pass (NumPy)
+
+**Problem:** Implement a simple 2-layer neural network forward pass (Linear -> ReLU -> Linear -> Sigmoid).
+
+```python
+import numpy as np
+
+def relu(x):
+    return np.maximum(0, x)
+
+def sigmoid(x):
+    return 1 / (1 + np.exp(-x))
+
+def neural_network_forward(X, W1, b1, W2, b2):
+    # Layer 1: Linear + ReLU
+    z1 = np.dot(X, W1) + b1
+    a1 = relu(z1)
+    
+    # Layer 2: Linear + Sigmoid
+    z2 = np.dot(a1, W2) + b2
+    a2 = sigmoid(z2)
+    
+    return a2
+
+# Dimensions check:
+# X:  (batch_size, input_dim) -> (32, 10)
+# W1: (input_dim, hidden_dim) -> (10, 64)
+# b1: (hidden_dim,)           -> (64,)
+# W2: (hidden_dim, output_dim)-> (64, 1)
+# b2: (output_dim,)           -> (1,)
+```
+
+#### 🧠 Algorithmic Walkthrough & Explanation
+- **Matrix Multiplication:** Shows deep understanding of tensor dimensions. `X` (32x10) dot `W1` (10x64) results in a (32x64) matrix.
+- **Broadcasting:** When `b1` (64,) is added to the (32x64) matrix, NumPy automatically broadcasts it across all 32 rows.
+- **Non-Linearities:** ReLU and Sigmoid allow the network to learn non-linear decision boundaries. Without them, the entire network collapses into a single linear transformation $X(W_1W_2) + (b_1W_2 + b_2)$.
+
+---
+
 *End of ML Coding Patterns — Deep mathematical breakdowns of foundational algorithms.*
+

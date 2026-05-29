@@ -22,13 +22,13 @@ Welcome to the ultimate, end-to-end interview preparation repository. This repos
    - [SQL Theory & Window Functions](file:///c:/MachineLearning/Python_interview_questions/05_SQL/sql_theory.md) | [SQL Coding Problems](file:///c:/MachineLearning/Python_interview_questions/05_SQL/sql_coding.md)
    - [Database Internals (B-Trees, ACID)](file:///c:/MachineLearning/Python_interview_questions/06_Databases/databases_theory.md)
 5. **[Caching & Messaging](file:///c:/MachineLearning/Python_interview_questions/12_Redis_Caching/)**
-   - [Redis & Caching Strategies](file:///c:/MachineLearning/Python_interview_questions/12_Redis_Caching/redis_caching_theory.md)
+   - [Redis & Caching Strategies](file:///c:/MachineLearning/Python_interview_questions/12_Redis_Caching/redis_caching_theory.md) | [Redis Coding](file:///c:/MachineLearning/Python_interview_questions/12_Redis_Caching/redis_coding.md)
    - [Message Queues (Kafka, RabbitMQ)](file:///c:/MachineLearning/Python_interview_questions/13_Message_Queues/message_queues_theory.md)
 6. **[Modern Python Web Stack](file:///c:/MachineLearning/Python_interview_questions/08_FastAPI/)**
    - [FastAPI Theory](file:///c:/MachineLearning/Python_interview_questions/08_FastAPI/fastapi_theory.md) | [FastAPI Coding](file:///c:/MachineLearning/Python_interview_questions/08_FastAPI/fastapi_coding.md)
-   - [Pydantic V2 (Rust Core)](file:///c:/MachineLearning/Python_interview_questions/07_Pydantic/pydantic_theory.md)
+   - [Pydantic V2 (Rust Core)](file:///c:/MachineLearning/Python_interview_questions/07_Pydantic/pydantic_theory.md) | [Pydantic Coding](file:///c:/MachineLearning/Python_interview_questions/07_Pydantic/pydantic_coding.md)
    - [SQLAlchemy 2.0 (ORM & Async)](file:///c:/MachineLearning/Python_interview_questions/09_SQLAlchemy/sqlalchemy_theory.md) | [SQLAlchemy Coding (Async & N+1)](file:///c:/MachineLearning/Python_interview_questions/09_SQLAlchemy/sqlalchemy_coding.md)
-   - [API Design (REST, Webhooks, SSE)](file:///c:/MachineLearning/Python_interview_questions/10_API_Design/api_design_theory.md)
+   - [API Design (REST, Webhooks, SSE)](file:///c:/MachineLearning/Python_interview_questions/10_API_Design/api_design_theory.md) | [API Design Coding](file:///c:/MachineLearning/Python_interview_questions/10_API_Design/api_design_coding.md)
 7. **[Testing & Pytest](file:///c:/MachineLearning/Python_interview_questions/34_Testing_Pytest/)**
    - [Testing Theory (Pyramid & Fixtures)](file:///c:/MachineLearning/Python_interview_questions/34_Testing_Pytest/testing_theory.md) | [Testing Coding (Mocking & TestClient)](file:///c:/MachineLearning/Python_interview_questions/34_Testing_Pytest/testing_coding.md)
 
@@ -48,6 +48,7 @@ Welcome to the ultimate, end-to-end interview preparation repository. This repos
     - [DL Theory (CNNs, LSTMs, Adam)](file:///c:/MachineLearning/Python_interview_questions/15_Deep_Learning/dl_theory.md) | [DL Coding (PyTorch)](file:///c:/MachineLearning/Python_interview_questions/15_Deep_Learning/dl_coding.md)
 12. **[Natural Language Processing (NLP)](file:///c:/MachineLearning/Python_interview_questions/16_NLP/)**
     - [NLP Theory (Attention, BERT/GPT)](file:///c:/MachineLearning/Python_interview_questions/16_NLP/nlp_theory.md) | [NLP Coding (Self-Attention)](file:///c:/MachineLearning/Python_interview_questions/16_NLP/nlp_coding.md)
+    - [Transformer Architecture Deep Dive](file:///c:/MachineLearning/Python_interview_questions/16_NLP/transformer_architecture.md)
 
 ### Generative AI & Agentic AI
 13. **[LLM Ecosystem](file:///c:/MachineLearning/Python_interview_questions/17_Hugging_Face/)**
