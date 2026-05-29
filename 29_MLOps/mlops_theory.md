@@ -105,4 +105,139 @@ A Feature Store is a centralized data management system specifically for ML feat
 
 ---
 
-*End of MLOps Theory — 6 questions covering CI/CD/CT, Model Decay (Drift), MLflow architecture, and Feature Stores.*
+### Q7: What is Data Versioning? (DVC)
+
+**Answer:**
+
+Git tracks code changes perfectly, but it was never designed to track datasets (a single CSV can be 50GB).
+
+**DVC (Data Version Control):**
+DVC works alongside Git to version-control datasets and model artifacts.
+- **How it works:** DVC stores the actual data in remote storage (S3, GCS). In Git, it stores a tiny `.dvc` file (like a pointer) containing the hash of the data. 
+- **The Workflow:** `dvc add data/train.csv` → creates `data/train.csv.dvc` (tracked by Git) → pushes the actual data to S3 via `dvc push`.
+- **Reproducibility:** If you `git checkout` to a commit from 3 months ago, `dvc checkout` will automatically download the exact dataset version that was used at that point in time.
+
+---
+
+### Q8: What is Training-Serving Skew and how do you prevent it?
+
+**Answer:**
+
+Training-Serving Skew is one of the most insidious bugs in production ML. The model works perfectly in your Jupyter notebook but fails silently in production.
+
+**Types of Skew:**
+1. **Feature Skew:** The training pipeline and serving pipeline compute features differently. (E.g., training uses Pandas to calculate `avg_spend_30d`, but serving uses a SQL query with a slightly different date range).
+2. **Data Distribution Skew:** The production data looks fundamentally different from training data (different user demographics, seasonality effects).
+3. **Label Skew:** The definition of labels has drifted (e.g., what counts as "fraudulent" in 2024 is different from 2022).
+
+**Prevention:**
+- **Feature Stores** (Feast, Vertex AI Feature Store) ensure the *exact same* feature computation code is used for both training and serving.
+- **Schema Validation:** Use TensorFlow Data Validation (TFDV) or Great Expectations to validate that incoming production data matches the statistical profile of training data.
+
+---
+
+### Q9: What is Shadow Deployment for ML models?
+
+**Answer:**
+
+Shadow Deployment (also called "Dark Launch") is a production testing strategy where the new model runs in parallel with the current production model, but its outputs are never shown to users.
+
+**How it works:**
+1. The production model (V1) receives a user request and returns the prediction to the user.
+2. The same request is silently forwarded to the new model (V2).
+3. V2's prediction is logged to a data warehouse — not returned to the user.
+4. A batch evaluation job compares V1 vs V2 predictions on real production traffic.
+
+**Why use it:**
+- Validates the model on *real* data distributions (not just offline test sets).
+- Zero risk to user experience.
+- Catches issues like latency spikes, memory leaks, and edge cases that offline testing misses.
+
+---
+
+### Q10: How do you monitor ML models in production? (Prometheus + Grafana)
+
+**Answer:**
+
+Model monitoring requires tracking both **system metrics** and **ML-specific metrics**.
+
+**System Metrics (Standard DevOps):**
+- Request latency (p50, p95, p99), throughput (requests/sec), error rates, CPU/GPU utilization.
+- Tools: Prometheus (metric collection) + Grafana (dashboards and alerting).
+
+**ML-Specific Metrics:**
+1. **Prediction Distribution Drift:** Is the distribution of model outputs changing? If your fraud model suddenly predicts 30% fraud instead of 2%, something is wrong.
+2. **Feature Drift:** Are the input features drifting from the training distribution? (Monitored using statistical tests like KS-Test or PSI — Population Stability Index).
+3. **Ground Truth Delayed Metrics:** For tasks where labels arrive later (e.g., loan default takes months), track business KPIs as proxies.
+
+**Alerting Pipeline:**
+```
+Prometheus scrapes /metrics → Detects drift PSI > 0.2 → Triggers PagerDuty alert → 
+Team investigates → Triggers automated retraining pipeline if confirmed
+```
+
+---
+
+### Q11: Explain Experiment Tracking. How does MLflow Tracking work?
+
+**Answer:**
+
+Data scientists often run hundreds of experiments (different hyperparameters, feature sets, architectures). Without tracking, they lose the ability to reproduce their best result.
+
+**MLflow Tracking:**
+```python
+import mlflow
+
+mlflow.set_experiment("fraud-detection-v2")
+
+with mlflow.start_run():
+    # Log hyperparameters
+    mlflow.log_param("learning_rate", 0.001)
+    mlflow.log_param("epochs", 50)
+    mlflow.log_param("model", "XGBoost")
+    
+    # Train model...
+    model = train(...)
+    
+    # Log metrics
+    mlflow.log_metric("accuracy", 0.94)
+    mlflow.log_metric("f1_score", 0.87)
+    mlflow.log_metric("auc", 0.96)
+    
+    # Log the model artifact
+    mlflow.sklearn.log_model(model, "model")
+```
+
+**The MLflow UI** provides a visual comparison table where you can sort all 200 runs by F1-Score, compare hyperparameters side-by-side, and instantly find the best configuration.
+
+---
+
+### Q12: What is an ML Pipeline? How does it differ from a Jupyter Notebook?
+
+**Answer:**
+
+A Jupyter Notebook is a linear, manual, non-reproducible script. An **ML Pipeline** is an automated, modular, reproducible workflow.
+
+**Why Notebooks Fail in Production:**
+- No automatic retries on failure.
+- No dependency management between steps.
+- "Run all cells" breaks when cells have hidden state.
+- No scheduling, alerting, or versioning.
+
+**Pipeline Architecture (Airflow / Vertex AI Pipelines):**
+Each step is an independent, containerized task connected in a DAG (Directed Acyclic Graph):
+
+```
+[Data Ingestion] → [Data Validation] → [Feature Engineering] → [Model Training] → [Model Evaluation] → [Deploy if Better]
+```
+
+**Key Properties:**
+- **Idempotent:** Re-running a step produces the same result.
+- **Cacheable:** If "Data Ingestion" hasn't changed, skip it and reuse the cached output.
+- **Observable:** Each step logs metadata, metrics, and artifacts.
+- **Triggerable:** Can be triggered by a schedule (daily), an event (new data arrives), or a drift alert.
+
+---
+
+*End of MLOps Theory — 12 comprehensive questions covering CI/CD/CT, Model Decay (Drift), MLflow, Feature Stores, DVC, Training-Serving Skew, Shadow Deployments, Production Monitoring, and Pipeline Architecture.*
+

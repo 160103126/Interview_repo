@@ -164,4 +164,108 @@ They are evaluation metrics for generative NLP tasks.
 
 ---
 
-*End of NLP Theory — 10 advanced questions covering Embeddings, Attention mechanisms, Transformers, BERT vs GPT, and evaluation metrics.*
+### Q11: Explain the different Tokenization algorithms: BPE vs WordPiece vs SentencePiece.
+
+**Answer:**
+
+Tokenization is how raw text is split into "tokens" (the units the model processes). Each algorithm produces different vocabularies.
+
+**BPE (Byte-Pair Encoding) — Used by GPT, LLaMA:**
+- Starts with individual characters. Iteratively merges the most frequent adjacent pair of characters into a new token.
+- *Example:* "low" → "l", "o", "w" → "lo", "w" → "low" (after enough merges).
+- Pure data-driven; no linguistic knowledge.
+
+**WordPiece — Used by BERT:**
+- Similar to BPE but uses a language-model-based scoring (maximizes the likelihood of the training data) instead of raw frequency.
+- Prepends `##` to subword tokens that are continuations of a word.
+- *Example:* "unhappiness" → "un", "##happiness"
+
+**SentencePiece — Used by T5, LLaMA:**
+- Treats the input as a raw stream of bytes (including spaces). Spaces are replaced with `▁` (unicode underscore). This means it works for ANY language without pre-tokenization.
+- Can use BPE or Unigram as the underlying algorithm.
+- *Example:* "I love NLP" → "▁I", "▁love", "▁NLP"
+
+---
+
+### Q12: What is Flash Attention? Why does it matter?
+
+**Answer:**
+
+Standard Self-Attention computes a full N×N attention matrix, which is stored in GPU HBM (High Bandwidth Memory). For long sequences (N=128K), this matrix is enormous and memory bandwidth becomes the bottleneck.
+
+**Flash Attention (Dao et al., 2022):**
+Instead of materializing the full N×N matrix in HBM, Flash Attention computes attention in **tiles** (blocks), keeping intermediate results in the GPU's fast SRAM (on-chip memory) and never writing the full attention matrix to slow HBM.
+
+**Impact:**
+- **Memory:** Reduces memory from O(N²) to O(N) — enabling much longer context windows.
+- **Speed:** 2-4x faster than standard attention by reducing HBM reads/writes.
+- **Exact:** Unlike sparse attention approximations, Flash Attention computes *exact* attention (no accuracy loss).
+
+**Why it matters:**
+Flash Attention is what enabled the jump from 4K → 128K context windows. Without it, models like GPT-4-Turbo and Claude 3 could not process long documents.
+
+---
+
+### Q13: Explain Multi-Head Attention math. Why multiple heads?
+
+**Answer:**
+
+Single-Head Attention computes one set of Q, K, V projections and one attention pattern. **Multi-Head Attention** runs `h` parallel attention heads, each with its own learned Q, K, V projections.
+
+**Math:**
+- Input: `X ∈ R^(seq_len × d_model)` (e.g., d_model = 512)
+- Each head `i` has its own weight matrices: `W_Q_i, W_K_i, W_V_i ∈ R^(d_model × d_k)` where `d_k = d_model / h`
+- `head_i = Attention(X·W_Q_i, X·W_K_i, X·W_V_i)`
+- Final: `MultiHead(X) = Concat(head_1, ..., head_h) · W_O`
+
+**Why multiple heads?**
+Each head learns to attend to **different types of relationships**:
+- Head 1 might learn syntactic relationships ("The cat **sat** on the **mat**").
+- Head 2 might learn coreference ("**She** said **her** name was Alice").
+- Head 3 might learn positional patterns (attending to nearby words).
+
+Without multiple heads, a single attention pattern can only capture one type of relationship per layer, severely limiting the model's representational power.
+
+---
+
+### Q14: What is the Positional Encoding math? (Sinusoidal Encodings)
+
+**Answer:**
+
+Transformers process all tokens in parallel (no inherent order). Positional Encodings are added to the input embeddings to inject sequence order information.
+
+**Sinusoidal Encodings (Original Transformer):**
+```
+PE(pos, 2i)   = sin(pos / 10000^(2i/d_model))
+PE(pos, 2i+1) = cos(pos / 10000^(2i/d_model))
+```
+Where `pos` = position in the sequence, `i` = dimension index, `d_model` = embedding dimension.
+
+**Why sin/cos functions?**
+1. **Relative Position:** For any fixed offset `k`, `PE(pos+k)` can be expressed as a linear function of `PE(pos)`. This allows the model to learn relative positions ("3 words apart") rather than just absolute positions.
+2. **Bounded Values:** sin/cos are bounded between [-1, 1], keeping the magnitude similar to the embeddings.
+3. **Unique Encoding:** Each position gets a unique encoding pattern.
+
+**Modern Alternative: RoPE** (Rotary Position Embeddings) applies rotations to the Q and K vectors instead of adding to embeddings. This makes attention scores depend only on *relative* distance, enabling better generalization to longer sequences.
+
+---
+
+### Q15: Explain Layer Normalization vs Batch Normalization for Transformers.
+
+**Answer:**
+
+**Batch Normalization** normalizes across the batch dimension (averaging over all samples). **Layer Normalization** normalizes across the feature dimension (averaging over all features within a single sample).
+
+**Why Transformers use Layer Norm, not Batch Norm:**
+1. **Variable Sequence Lengths:** Sentences in a batch have different lengths. Batch statistics are meaningless when padding is involved.
+2. **Batch Size Independence:** Layer Norm computes statistics per-sample. It works identically whether your batch size is 1 or 1000. Batch Norm requires sufficiently large batches for stable statistics.
+3. **Sequential/Autoregressive Models:** During generation, the model processes one token at a time (batch size = 1). Batch Norm would fail; Layer Norm works perfectly.
+
+**Pre-Norm vs Post-Norm:**
+- **Post-Norm (Original Transformer):** `output = LayerNorm(x + Sublayer(x))` — Harder to train, requires careful learning rate warmup.
+- **Pre-Norm (Modern Standard):** `output = x + Sublayer(LayerNorm(x))` — More stable training, gradients flow more easily through residual connections.
+
+---
+
+*End of NLP Theory — 15 comprehensive questions covering Tokenization algorithms, Embeddings, Attention, Transformers, Flash Attention, BERT vs GPT, Multi-Head Attention math, Positional Encodings, Layer Normalization, and evaluation metrics.*
+

@@ -124,4 +124,127 @@ How does an LLM "see" an image? It doesn't use standard text tokenizers. It uses
 
 ---
 
-*End of Generative AI Advanced Topics — Deep dives into inference optimization (vLLM, KV Cache, Speculative Decoding), context scaling (RoPE), Multi-modal architectures, and next-gen frameworks like DSPy.*
+### Q8: Explain Tensor Parallelism vs Pipeline Parallelism.
+
+**Answer:**
+
+When a model is too large to fit on a single GPU (e.g., a 70B model = 140GB in FP16 vs a GPU with 80GB VRAM), you must split it across multiple GPUs.
+
+**Tensor Parallelism (TP):**
+- Splits individual **layers** across GPUs. Each GPU holds a fraction of every layer's weight matrix.
+- *Example:* A 4096×4096 weight matrix is split into 4 chunks of 4096×1024 across 4 GPUs.
+- **Advantage:** Very low latency (GPUs process each token together in lockstep).
+- **Requirement:** GPUs must be connected via ultra-fast NVLink (not PCIe). Communication overhead is very high.
+
+**Pipeline Parallelism (PP):**
+- Splits **layers** across GPUs sequentially. GPU 1 holds layers 1-16, GPU 2 holds layers 17-32.
+- The output of GPU 1 is sent to GPU 2 as input.
+- **Advantage:** Lower communication bandwidth needed (only inter-layer activation tensors are sent).
+- **Disadvantage:** "Pipeline bubbles" — GPU 2 sits idle while GPU 1 processes, and vice versa.
+
+**In Practice:** Large-scale training (like LLaMA-3 405B) uses a combination: TP within a single server (8 GPUs connected via NVLink) + PP across servers (connected via InfiniBand).
+
+---
+
+### Q9: What is Grouped Query Attention (GQA)?
+
+**Answer:**
+
+Standard Multi-Head Attention (MHA) has separate Q, K, V projections for each head. For a 32-head model, that means 32 Key heads and 32 Value heads. The KV cache stores all of them, consuming massive VRAM.
+
+**Multi-Query Attention (MQA):** All 32 Query heads share a **single** Key and Value head. This reduces KV cache by 32x but degrades quality.
+
+**Grouped Query Attention (GQA) — Used by LLaMA-3, Gemini:**
+A compromise. Instead of 32 KV heads or 1 KV head, it uses 8 KV groups (each shared by 4 Query heads).
+- **Memory:** KV cache is reduced by 4x compared to MHA.
+- **Quality:** Much better than MQA (nearly matching MHA in benchmarks).
+
+**Why it matters for production:** GQA is the reason modern 70B models can serve reasonable batch sizes. Without it, the KV cache would consume all available VRAM at batch_size > 4.
+
+---
+
+### Q10: Explain SGLang and RadixAttention.
+
+**Answer:**
+
+**SGLang** is a next-generation inference framework that focuses on structured generation and prefix caching efficiency.
+
+**RadixAttention:** SGLang's key innovation. Instead of storing KV caches in a flat list, it organizes them in a **Radix Tree** (prefix tree) data structure.
+
+**Why this matters:**
+In production, many requests share common prefixes:
+- All requests to a RAG chatbot share the same system prompt (e.g., 2000 tokens).
+- Multi-turn conversations share the entire previous conversation history.
+
+RadixAttention automatically detects these shared prefixes across ALL concurrent requests and stores their KV cache only once, enabling:
+1. **Automatic prefix caching** without any user configuration.
+2. **Near-instant Time-to-First-Token** for requests with cached prefixes.
+3. **Much higher throughput** because VRAM isn't wasted on duplicate KV caches.
+
+---
+
+### Q11: What is Mixture of Depths (MoD)?
+
+**Answer:**
+
+Mixture of Depths (Google, 2024) is a dynamic compute allocation technique that extends the MoE concept from "which expert?" to "which layer?"
+
+**The Insight:** Not all tokens need the same amount of computation. A function word like "the" is trivial to predict; a complex math token requires deep reasoning.
+
+**How it works:**
+At each layer, a lightweight router decides whether to process a token through the full Transformer block or skip it (pass it through a residual shortcut only).
+
+**Result:**
+- Simple tokens skip many layers, getting processed by only 50% of the network.
+- Complex tokens use the full depth.
+- Overall FLOPs are reduced by 30-50% with minimal quality degradation.
+
+**Connection to Speculative Decoding:** Both techniques exploit the observation that most tokens are "easy" and don't need the full model's compute power.
+
+---
+
+### Q12: How do you implement Streaming / Server-Sent Events (SSE) for LLM APIs?
+
+**Answer:**
+
+Users expect to see tokens appear one-by-one (like ChatGPT), not wait 10 seconds for the complete response. This is implemented via **Server-Sent Events (SSE)**.
+
+**FastAPI Implementation:**
+```python
+from fastapi import FastAPI
+from fastapi.responses import StreamingResponse
+import asyncio
+
+app = FastAPI()
+
+async def generate_stream(prompt: str):
+    """Simulates streaming tokens from an LLM."""
+    # In production: use vLLM/OpenAI streaming API
+    for token in ["Hello", " ", "World", "!", " How", " can", " I", " help?"]:
+        yield f"data: {token}\n\n"  # SSE format
+        await asyncio.sleep(0.1)  # Simulate generation delay
+    yield "data: [DONE]\n\n"
+
+@app.get("/stream")
+async def stream_response(prompt: str):
+    return StreamingResponse(
+        generate_stream(prompt),
+        media_type="text/event-stream"
+    )
+```
+
+**Client-side JavaScript:**
+```javascript
+const source = new EventSource("/stream?prompt=Hello");
+source.onmessage = (event) => {
+    if (event.data === "[DONE]") { source.close(); return; }
+    document.getElementById("output").textContent += event.data;
+};
+```
+
+**Why SSE over WebSockets for LLMs?** SSE is simpler (HTTP-based, no connection upgrade), unidirectional (server → client, which is all you need for token streaming), and works through most proxies/CDNs.
+
+---
+
+*End of Generative AI Advanced Topics — 12 deep dives covering Speculative Decoding, RAGAS, KV Cache Math, vLLM/PagedAttention, RoPE, Multi-modal Architecture, DSPy, Tensor/Pipeline Parallelism, GQA, SGLang, Mixture of Depths, and Streaming.*
+

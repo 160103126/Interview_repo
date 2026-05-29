@@ -101,4 +101,156 @@ If you try to run a distributed database (like PostgreSQL or Cassandra) using a 
 
 ---
 
-*End of Kubernetes Theory — 7 questions covering Pods, Deployments (Self-healing), Services/Ingress (Networking), Autoscaling (HPA), and StatefulSets.*
+### Q8: How do you manage Configuration and Secrets in Kubernetes?
+
+**Answer:**
+
+Hardcoding database passwords or API keys in Docker images is a massive security risk. Kubernetes provides two primitives:
+
+**ConfigMaps (Non-sensitive data):**
+Store configuration data as key-value pairs (e.g., `DATABASE_HOST=postgres-service`, `LOG_LEVEL=INFO`).
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+data:
+  DATABASE_HOST: "postgres-service"
+  LOG_LEVEL: "INFO"
+```
+
+**Secrets (Sensitive data):**
+Store passwords, API keys, and TLS certificates. Values are Base64-encoded (NOT encrypted by default — you must enable encryption-at-rest).
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: db-credentials
+type: Opaque
+data:
+  password: cGFzc3dvcmQxMjM=  # base64 encoded
+```
+
+Both can be injected into Pods as **environment variables** or **mounted files**.
+
+---
+
+### Q9: Explain Persistent Volumes (PV) and Persistent Volume Claims (PVC).
+
+**Answer:**
+
+Pods are ephemeral — when they die, their filesystem is destroyed. Databases running in Pods would lose all data.
+
+**Persistent Volume (PV):** A piece of storage provisioned by an admin (e.g., a 100GB SSD on AWS EBS or GCP Persistent Disk). It exists independently of any Pod.
+
+**Persistent Volume Claim (PVC):** A *request* for storage by a Pod. The PVC says "I need 50GB of fast SSD storage." Kubernetes finds a matching PV and binds them together.
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-data
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 50Gi
+```
+
+**Dynamic Provisioning:** In cloud environments, you don't pre-create PVs. You define a `StorageClass`, and Kubernetes automatically provisions the cloud disk when a PVC is created.
+
+---
+
+### Q10: What are Resource Requests and Limits? Why are they critical?
+
+**Answer:**
+
+Without resource constraints, a single rogue Pod can consume all CPU/Memory on a Node, starving other Pods.
+
+```yaml
+resources:
+  requests:
+    cpu: "500m"      # Guaranteed minimum: 0.5 CPU cores
+    memory: "256Mi"  # Guaranteed minimum: 256 MB RAM
+  limits:
+    cpu: "2000m"     # Maximum allowed: 2 CPU cores
+    memory: "1Gi"    # Maximum allowed: 1 GB RAM (OOMKilled if exceeded)
+```
+
+**Requests:** The scheduler uses these to decide *which Node* has enough capacity to place the Pod. If no Node can satisfy the request, the Pod stays in `Pending`.
+
+**Limits:** The hard ceiling. If a Pod exceeds its memory limit, Kubernetes kills it (`OOMKilled`). If it exceeds its CPU limit, it is throttled (slowed down, not killed).
+
+**For ML workloads:** GPU resources are also requestable:
+```yaml
+resources:
+  limits:
+    nvidia.com/gpu: 1  # Request exactly 1 GPU
+```
+
+---
+
+### Q11: What are Readiness and Liveness Probes?
+
+**Answer:**
+
+Probes are health checks that Kubernetes uses to manage Pod lifecycle.
+
+**Liveness Probe:** "Is this Pod alive?"
+- If the probe fails, Kubernetes **restarts** the Pod (kills it and creates a new one).
+- *Use case:* Detecting deadlocks where the process is running but stuck.
+
+**Readiness Probe:** "Is this Pod ready to receive traffic?"
+- If the probe fails, Kubernetes **removes the Pod from the Service's load balancer** (stops routing traffic to it) but does NOT restart it.
+- *Use case:* An ML model server that takes 30 seconds to load weights into GPU memory. During loading, it's alive but not ready.
+
+```yaml
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 8000
+  initialDelaySeconds: 10
+  periodSeconds: 15
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: 8000
+  initialDelaySeconds: 30  # Wait for model to load
+  periodSeconds: 5
+```
+
+**Startup Probe (K8s 1.18+):** For slow-starting applications. Disables liveness/readiness probes until the startup probe succeeds, preventing premature restarts.
+
+---
+
+### Q12: What is Helm? Why is it called "the package manager for Kubernetes"?
+
+**Answer:**
+
+Deploying a production application on K8s requires writing many YAML files: Deployment, Service, Ingress, ConfigMap, Secret, PVC, HPA, etc. Managing these across dev/staging/production environments is a nightmare.
+
+**Helm** solves this by packaging all K8s manifests into a single deployable unit called a **Chart**.
+
+**Key Concepts:**
+- **Chart:** A bundle of pre-configured Kubernetes resource manifests (like an `apt` package for Linux).
+- **Values:** A `values.yaml` file that parameterizes the chart. Different environments override different values.
+- **Release:** A running instance of a Chart on a cluster.
+
+```bash
+# Install a production-ready PostgreSQL with one command:
+helm install my-db bitnami/postgresql --set auth.postgresPassword=secret
+
+# Upgrade to a new version:
+helm upgrade my-db bitnami/postgresql --set image.tag=16.0
+
+# Rollback if broken:
+helm rollback my-db 1
+```
+
+**Why it matters for interviews:** It shows you understand production K8s deployment patterns, not just writing standalone YAML files.
+
+---
+
+*End of Kubernetes Theory — 12 comprehensive questions covering Pods, Deployments, Services, Ingress, Autoscaling, StatefulSets, ConfigMaps/Secrets, Persistent Volumes, Resource Management, Health Probes, and Helm.*
+

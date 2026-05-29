@@ -128,4 +128,127 @@ Building agents is easy; making them reliable is incredibly hard.
 
 ---
 
-*End of Agentic AI Theory — 8 questions covering ReAct, Plan-and-Execute, Native Tool Calling, Multi-Agent paradigms, and Reflection loops.*
+### Q9: What are Human-in-the-Loop (HITL) patterns for Agents?
+
+**Answer:**
+
+Fully autonomous agents are dangerous in production (financial transactions, database modifications, email sending). HITL patterns add human checkpoints.
+
+**Pattern 1: Approval Gate**
+The agent pauses before executing high-risk tools and presents the proposed action to a human for explicit approval.
+```
+Agent: "I want to execute: DELETE FROM users WHERE last_login < '2023-01-01'"
+Human: [Approve] / [Reject] / [Modify]
+```
+
+**Pattern 2: Escalation**
+The agent handles routine queries autonomously but escalates complex/ambiguous ones to a human operator. LangGraph implements this via `interrupt_before` on specific nodes.
+
+**Pattern 3: Confidence-Based Routing**
+```python
+if agent_confidence > 0.9:
+    execute_autonomously()
+elif agent_confidence > 0.7:
+    execute_with_logging()  # Auto-execute but flag for review
+else:
+    escalate_to_human()
+```
+
+**Pattern 4: Edit-and-Continue**
+The agent generates a full plan, presents it to the human. The human can edit individual steps before the agent executes. (LangGraph's `Command` pattern supports this).
+
+---
+
+### Q10: Explain Multi-Agent Communication Protocols.
+
+**Answer:**
+
+When multiple agents collaborate, they need structured communication. Different frameworks use different paradigms:
+
+**1. Shared State (LangGraph):**
+All agents read from and write to a single shared state object. Communication is implicit — Agent A modifies the state, Agent B reads the updated state.
+- **Pros:** Deterministic, debuggable, easy to track data flow.
+- **Cons:** State can grow large; no "private" communication between specific agents.
+
+**2. Message Passing (AutoGen, CrewAI):**
+Agents send direct messages to each other in a conversation thread. Each message has a sender, recipient, and content.
+- **Pros:** Natural for debate/discussion patterns (Coder → Reviewer → Coder).
+- **Cons:** Hard to control, conversations can go off-track.
+
+**3. Blackboard Architecture:**
+A central "blackboard" stores all partial solutions. Agents independently monitor the blackboard and contribute when they can.
+- **Pros:** Highly scalable, agents can be added/removed without changing the system.
+- **Cons:** Non-deterministic execution order.
+
+**4. Supervisor Pattern:**
+A central "Supervisor" agent routes tasks to specialized worker agents and aggregates their outputs.
+- **Pros:** Simple to reason about. The supervisor controls the flow.
+- **Cons:** Supervisor becomes a bottleneck; single point of failure.
+
+---
+
+### Q11: How do you add Guardrails to Agent systems?
+
+**Answer:**
+
+Agents have more failure modes than standard LLM applications because they can take actions (modify databases, send emails, execute code).
+
+**Layer 1: Tool-Level Guardrails**
+```python
+@tool
+def execute_sql(query: str) -> str:
+    # Block destructive operations
+    if any(keyword in query.upper() for keyword in ["DROP", "DELETE", "TRUNCATE"]):
+        raise ToolError("Destructive SQL operations are blocked")
+    # Rate limiting
+    if rate_limiter.exceeded():
+        raise ToolError("Tool call rate limit exceeded")
+    return db.execute(query)
+```
+
+**Layer 2: Agent-Level Guardrails**
+- **Max iterations:** Kill the agent after N steps to prevent infinite loops.
+- **Budget limits:** Track token usage and stop if cost exceeds threshold.
+- **Visited state tracking:** If the agent is in the same state as 3 iterations ago, break the loop.
+
+**Layer 3: Output Guardrails**
+- Run the agent's final output through a safety classifier before returning to the user.
+- Check for PII leakage, toxic content, or off-topic responses.
+
+**Layer 4: Sandbox Execution**
+- Execute code-generating agents in sandboxed environments (Docker containers, E2B, Modal).
+- Never let an agent execute code on the production host.
+
+---
+
+### Q12: How do you evaluate and benchmark Agent systems?
+
+**Answer:**
+
+Agent evaluation is fundamentally harder than LLM evaluation because you must evaluate the *trajectory* (sequence of actions), not just the final output.
+
+**Metrics:**
+1. **Task Success Rate:** Did the agent complete the task correctly? (Binary: pass/fail).
+2. **Step Efficiency:** How many steps did it take? (Fewer = better).
+3. **Tool Use Accuracy:** Did it call the right tools with correct arguments?
+4. **Cost Efficiency:** Total tokens consumed (prompt + completion) per task.
+5. **Error Recovery:** When a tool fails, does the agent recover or crash?
+
+**Benchmarks:**
+| Benchmark | What it tests |
+|-----------|--------------|
+| **SWE-Bench** | Can the agent fix real GitHub issues in open-source repos? |
+| **WebArena** | Can the agent navigate websites and complete tasks? |
+| **GAIA** | Can the agent answer questions requiring multi-step reasoning + tool use? |
+| **HumanEval-Agent** | Can the agent write and debug code end-to-end? |
+
+**Production Evaluation Pattern:**
+1. Create a golden test suite of 50+ tasks with known correct trajectories.
+2. Run the agent on each task.
+3. Compare its trajectory to the golden trajectory (or just check if the final answer matches).
+4. Track success rate over time — any prompt/model change that drops success rate below threshold blocks deployment.
+
+---
+
+*End of Agentic AI Theory — 12 comprehensive questions covering ReAct, Plan-and-Execute, Memory, Tool Calling, Multi-Agent systems, Reflection, Failure Modes, Human-in-the-Loop, Communication Protocols, Guardrails, and Evaluation.*
+

@@ -138,4 +138,139 @@ If you have a 100k token system prompt (e.g., an entire codebase) and you ask 50
 
 ---
 
-*End of Generative AI Theory — 9 advanced questions covering RLHF/DPO, MoE, KV Caching, and Tokenization anomalies.*
+### Q10: What is Constitutional AI (CAI)?
+
+**Answer:**
+
+Constitutional AI (Anthropic, 2022) is an alternative alignment approach that reduces the need for human labelers.
+
+**The Process:**
+1. **Red-teaming Phase:** The model generates harmful/toxic outputs deliberately.
+2. **Self-Critique:** The same model is asked to critique its own harmful output using a set of **principles** (the "constitution") — e.g., "Please revise the response to remove harmful content."
+3. **Self-Revision:** The model generates a revised, safer response.
+4. **RLAIF (RL from AI Feedback):** Instead of humans ranking outputs, the AI itself (guided by the constitution) provides the preference data for RL training.
+
+**Why it matters:** Scales alignment without needing thousands of human annotators. Anthropic's Claude models are trained primarily using CAI.
+
+---
+
+### Q11: What is Knowledge Distillation for LLMs?
+
+**Answer:**
+
+Knowledge Distillation trains a small, fast "student" model to mimic the behavior of a large, powerful "teacher" model.
+
+**How it works:**
+1. Run inputs through the Teacher (e.g., GPT-4) and collect its output probability distributions ("soft labels") — not just the top-1 prediction.
+2. Train the Student (e.g., a 1B parameter model) to match the Teacher's soft probability distribution using KL-Divergence loss.
+
+**Why soft labels work better than hard labels:**
+A hard label says: "This is a cat." A soft distribution says: "95% cat, 3% kitten, 1.5% dog, 0.5% tiger." The student learns the inter-class relationships from these soft labels — that cats are more similar to kittens than to airplanes.
+
+**Modern LLM Distillation:**
+- Many open-source models are distilled from GPT-4 outputs (using its generated text as training data).
+- **Note:** Most API Terms of Service (OpenAI, Anthropic) prohibit using their outputs to train competing models. Check licenses carefully.
+
+---
+
+### Q12: Explain Fine-tuning strategies: Full Fine-tuning vs LoRA vs QLoRA.
+
+**Answer:**
+
+| Method | Trainable Params | VRAM Needed | Use Case |
+|--------|-----------------|-------------|----------|
+| **Full Fine-tuning** | 100% of parameters | Very High (8B model = ~60GB) | Maximum quality, enterprise budgets |
+| **LoRA** | ~0.1-1% of parameters | Moderate (~16GB for 8B) | Standard efficient fine-tuning |
+| **QLoRA** | ~0.1% of parameters | Very Low (~6GB for 8B) | Consumer GPUs, rapid prototyping |
+
+**LoRA (Low-Rank Adaptation):**
+Instead of updating all weight matrices during fine-tuning, LoRA freezes the original weights and injects small, trainable "adapter" matrices (rank decomposition: `W + BA` where B and A are small matrices).
+
+**QLoRA:**
+Same as LoRA but loads the base model in 4-bit quantization (NF4 format), then trains LoRA adapters in FP16. This allows fine-tuning a 70B model on a single 24GB GPU.
+
+**When to use what:**
+- **Full Fine-tuning:** You have massive compute and need maximum control.
+- **LoRA:** Standard choice for most production fine-tuning (Hugging Face PEFT library).
+- **QLoRA:** When you're limited to consumer GPUs (RTX 3090/4090) or rapid experimentation.
+
+---
+
+### Q13: How do Embedding Models work? (text-embedding-3, BGE)
+
+**Answer:**
+
+Embedding models convert text into dense vector representations for use in RAG, semantic search, and clustering.
+
+**Architecture:**
+Most modern embedding models are based on BERT-style encoders, but trained with special objectives:
+1. **Contrastive Learning:** The model learns that similar text pairs (e.g., question and its answer) should have nearby vectors, and dissimilar pairs should be far apart.
+2. **In-Batch Negatives:** Each other sample in the training batch serves as a negative example, providing efficient training.
+
+**Key Properties:**
+- **Dimension:** Typically 768 (small) to 3072 (large) dimensions.
+- **Normalization:** Most models output normalized vectors (unit length), so cosine similarity = dot product.
+- **Instruction-Prefixed:** Modern models (like `text-embedding-3`, `BGE-M3`) prepend task instructions: "Represent this document for retrieval" vs "Represent this query for search."
+
+**Choosing a model:**
+- Use **Matryoshka Representation Learning** models that allow truncating dimensions (e.g., use 256 dims instead of 3072 for faster search with ~2% quality loss).
+- Always benchmark on YOUR domain data using MTEB leaderboard as a starting point.
+
+---
+
+### Q14: What is Model Merging? (SLERP, TIES, DARE)
+
+**Answer:**
+
+Model Merging combines multiple fine-tuned models into a single model WITHOUT any additional training. This is a powerful technique in the open-source community.
+
+**Why merge?**
+If you fine-tune one model on code and another on medical text, merging them can produce a model that's good at both — without retraining.
+
+**Techniques:**
+1. **Linear Merge:** `merged = α * model_A + (1-α) * model_B`. Simple weighted average. Works but can degrade performance.
+2. **SLERP (Spherical Linear Interpolation):** Interpolates along the surface of a hypersphere rather than a straight line, better preserving the geometry of weight spaces.
+3. **TIES (TrIM, Elect Sign, Disjoint Merge):** Trims small delta weights (noise), resolves sign conflicts between models, then merges. Produces cleaner merges.
+4. **DARE (Drop And Rescale):** Randomly drops a large fraction of delta weights before merging, then rescales. Surprisingly, this works extremely well.
+
+**Tools:** `mergekit` library is the standard for model merging.
+
+---
+
+### Q15: Explain Structured Generation (Outlines, Guidance).
+
+**Answer:**
+
+A major production challenge: LLMs often output malformed JSON, miss required fields, or include extra text. Even with JSON mode, the output may not conform to your specific schema.
+
+**Structured Generation** constrains the token-level sampling process itself:
+
+**Outlines (Python library):**
+```python
+import outlines
+
+model = outlines.models.transformers("meta-llama/Meta-Llama-3-8B-Instruct")
+
+# Define a JSON schema
+schema = {
+    "type": "object",
+    "properties": {
+        "name": {"type": "string"},
+        "age": {"type": "integer", "minimum": 0, "maximum": 150}
+    },
+    "required": ["name", "age"]
+}
+
+# Generate — the model is FORCED to produce valid JSON matching the schema
+generator = outlines.generate.json(model, schema)
+result = generator("Extract info: John is 30 years old.")
+# Output: {"name": "John", "age": 30} — GUARANTEED valid
+```
+
+**How it works under the hood:**
+At each token generation step, the library computes which tokens are valid according to the current state of the JSON/regex grammar and **masks out all invalid tokens** before sampling. The model literally cannot produce invalid output.
+
+---
+
+*End of Generative AI Theory — 15 comprehensive questions covering RLHF/DPO, MoE, KV Caching, Tokenization, Constitutional AI, Knowledge Distillation, Fine-tuning (LoRA/QLoRA), Embedding Models, Model Merging, and Structured Generation.*
+

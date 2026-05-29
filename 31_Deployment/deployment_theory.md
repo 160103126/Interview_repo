@@ -108,4 +108,113 @@ How do you know if V2 is *better* than V1 (e.g., drives more clicks)?
 
 ---
 
-*End of ML Deployment Theory — 6 advanced questions covering Batch vs Real-time, ONNX, gRPC vs REST, Dynamic Batching, and Blue-Green/Canary/Shadow rollouts.*
+### Q7: What is Model Quantization? Why is it critical for deployment?
+
+**Answer:**
+
+Quantization reduces the precision of model weights from 32-bit floating point (FP32) to lower precision formats, dramatically reducing model size and inference latency.
+
+**Types:**
+1. **FP16 (Half Precision):** Reduces weights from 32-bit to 16-bit. ~2x memory savings with minimal accuracy loss. Supported natively by modern GPUs.
+2. **INT8 Quantization:** Reduces to 8-bit integers. ~4x memory savings. Requires calibration data to map float ranges to integer ranges.
+3. **INT4 / GPTQ / AWQ:** Extreme compression for LLMs. Reduces a 70B model from 140GB (FP16) to ~35GB (INT4). Makes it possible to run massive models on consumer GPUs.
+
+**Post-Training Quantization (PTQ):** Applied *after* training. Fast but can degrade accuracy for aggressive quantization.
+**Quantization-Aware Training (QAT):** Simulates quantization *during* training. The model learns to compensate, resulting in higher accuracy but requiring retraining.
+
+---
+
+### Q8: Compare Model Serving Frameworks: TorchServe vs TFServing vs Triton.
+
+**Answer:**
+
+| Feature | TorchServe | TF Serving | NVIDIA Triton |
+|---------|-----------|------------|---------------|
+| **Framework** | PyTorch only | TensorFlow only | Framework-agnostic (PyTorch, TF, ONNX, TensorRT) |
+| **Protocol** | REST + gRPC | REST + gRPC | REST + gRPC |
+| **Dynamic Batching** | ✅ | ✅ | ✅ (Best-in-class) |
+| **Model Ensemble** | ❌ | ❌ | ✅ (Chain multiple models in a pipeline) |
+| **Best For** | PyTorch-native teams | TensorFlow-native teams | Multi-framework production environments |
+
+**NVIDIA Triton** is the industry standard at MAANG companies because it supports any framework and provides the most sophisticated batching, GPU scheduling, and model pipeline capabilities.
+
+---
+
+### Q9: What is Model Versioning with Feature Flags?
+
+**Answer:**
+
+Feature Flags (LaunchDarkly, Unleash) allow you to control which model version serves predictions without deploying new code.
+
+**Architecture:**
+```python
+@app.post("/predict")
+async def predict(request: PredictRequest):
+    if feature_flag.is_enabled("use_model_v2", user_id=request.user_id):
+        prediction = model_v2.predict(request.features)
+    else:
+        prediction = model_v1.predict(request.features)
+    return prediction
+```
+
+**Benefits:**
+- **Instant Rollback:** If V2 shows degraded metrics, flip the flag — no redeployment needed.
+- **Gradual Rollout:** Enable V2 for 5% of users, monitor, then ramp to 100%.
+- **Targeted Testing:** Enable V2 only for internal employees or specific regions first.
+
+---
+
+### Q10: How do you Load Test ML Endpoints?
+
+**Answer:**
+
+ML endpoints have unique performance characteristics (GPU memory limits, batch queuing) that standard web load testing doesn't capture.
+
+**Tools:** Locust (Python-native), k6, Apache JMeter.
+
+**What to Measure:**
+1. **Latency Percentiles (p50, p95, p99):** Not just average! A p99 of 5 seconds means 1 in 100 users waits 5 seconds.
+2. **Throughput under Concurrency:** How many requests/sec can the endpoint handle before latency degrades? This reveals the GPU saturation point.
+3. **Cold Start Latency:** If using serverless (Cloud Run, Lambda), how long does the first request take to load the model into memory?
+4. **Memory Under Load:** Does GPU VRAM usage grow linearly with concurrent requests? When does it OOM (Out of Memory)?
+
+**Key Pattern:** Run the load test with increasing concurrency (10 → 50 → 100 → 500 users) and plot latency vs throughput to find the optimal batch size and replica count.
+
+---
+
+### Q11: Explain ONNX Runtime optimizations for production inference.
+
+**Answer:**
+
+ONNX Runtime (ORT) is a high-performance inference engine maintained by Microsoft.
+
+**Why use it over raw PyTorch?**
+1. **Graph Optimization:** ORT fuses multiple operations (e.g., Conv → BatchNorm → ReLU) into a single kernel, reducing overhead.
+2. **Quantization Integration:** ORT provides built-in INT8 quantization with calibration tools.
+3. **Hardware Acceleration:** ORT automatically dispatches to the fastest available backend (CUDA, TensorRT, DirectML, CPU AVX-512).
+4. **Cross-Platform:** Train in PyTorch → Export to ONNX → Deploy with ORT on any platform (Windows, Linux, Edge devices, browsers via ONNX.js).
+
+**Typical Speedup:** 2x-5x over raw PyTorch inference with zero accuracy loss.
+
+---
+
+### Q12: Compare Serverless vs Dedicated GPU for ML Inference.
+
+**Answer:**
+
+| Feature | Serverless (Cloud Run, Lambda) | Dedicated GPU (GKE, EC2 + GPU) |
+|---------|------|------|
+| **Cold Start** | Seconds to minutes (loading model) | None (always warm) |
+| **Cost Model** | Pay-per-request | Pay 24/7 regardless of traffic |
+| **Scaling** | Auto scales to 0 (no traffic = no cost) | Manual or HPA-based |
+| **Best For** | Bursty, low-frequency workloads | High-throughput, latency-sensitive APIs |
+
+**The Hybrid Pattern (Common at scale):**
+- **Always-on GPU instances** for the core high-traffic model (e.g., main recommendation engine).
+- **Serverless containers** for long-tail, low-traffic models (e.g., rarely-used language translation endpoints).
+- **Queue-based batch processing** for background tasks (e.g., nightly report generation).
+
+---
+
+*End of ML Deployment Theory — 12 comprehensive questions covering Batch vs Real-time, ONNX, gRPC, Dynamic Batching, Blue-Green/Canary, Quantization, Serving Frameworks, Feature Flags, Load Testing, and Serverless vs GPU tradeoffs.*
+

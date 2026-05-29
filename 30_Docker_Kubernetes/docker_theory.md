@@ -138,4 +138,146 @@ Used to create extremely small, secure production images.
 
 ---
 
-*End of Docker Theory — 7 questions covering Containers vs VMs, Dockerfile optimization (Layer Caching), Docker Compose, Data Persistence, and Multi-Stage builds.*
+### Q8: Explain Docker Networking modes.
+
+**Answer:**
+
+Containers need to communicate with each other and the outside world. Docker provides several networking modes:
+
+1. **Bridge (Default):** Containers on the same bridge network can communicate via container names (DNS). Isolated from the host. Most common for single-host deployments.
+2. **Host:** The container shares the host's network directly. No port mapping needed — the container's port IS the host's port. Eliminates networking overhead but loses isolation.
+   - *Use case:* Performance-critical applications where network latency matters (ML inference servers).
+3. **None:** Complete network isolation. The container has no network interface.
+4. **Overlay:** Multi-host networking for Docker Swarm or Kubernetes. Containers on different physical machines can communicate as if they're on the same network.
+
+```bash
+# Create a custom bridge network
+docker network create my-app-network
+
+# Run containers on the same network (they can reach each other by name)
+docker run --network my-app-network --name api my-api-image
+docker run --network my-app-network --name db postgres:15
+# Inside the api container: connect to "db:5432" (DNS resolution works automatically)
+```
+
+---
+
+### Q9: What are Docker Health Checks?
+
+**Answer:**
+
+By default, Docker considers a container "healthy" as long as the main process is running. But a FastAPI server might have a running process that is stuck in a deadlock — Docker won't know.
+
+**Health Checks** let you define a command that Docker runs periodically to verify the container is actually working:
+
+```dockerfile
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+  CMD curl -f http://localhost:8000/health || exit 1
+```
+
+**States:**
+- `healthy`: The health check command succeeded.
+- `unhealthy`: The command failed 3 consecutive times (retries).
+- `starting`: The container just started and is within the start period.
+
+**Why it matters:**
+- Docker Compose's `depends_on` with `condition: service_healthy` won't start dependent containers until the dependency is healthy.
+- Kubernetes' liveness/readiness probes serve the same purpose.
+- Load balancers use health checks to remove unhealthy containers from rotation.
+
+---
+
+### Q10: Explain `.dockerignore` and Image Size Optimization.
+
+**Answer:**
+
+**`.dockerignore`** prevents unnecessary files from being sent to the Docker daemon during `docker build`, reducing build context size and preventing sensitive files from entering the image.
+
+```
+# .dockerignore
+__pycache__/
+*.pyc
+.git/
+.env
+node_modules/
+data/
+*.md
+tests/
+.vscode/
+```
+
+**Image Size Optimization Techniques:**
+1. **Use slim/alpine base images:** `python:3.11-slim` (150MB) vs `python:3.11` (900MB).
+2. **Combine RUN commands:** Each `RUN` creates a layer. `RUN pip install && apt-get clean` is one layer instead of two.
+3. **Multi-stage builds:** (See Q7). Copy only the final binary/files, not build tools.
+4. **`--no-cache-dir` for pip:** `pip install --no-cache-dir -r requirements.txt` prevents pip from storing downloaded packages.
+5. **Remove unnecessary system packages:** `apt-get remove --purge build-essential && rm -rf /var/lib/apt/lists/*`
+
+**Target:** A production ML API container should be 200-500MB, not 5GB.
+
+---
+
+### Q11: How do you scan Docker images for Security Vulnerabilities?
+
+**Answer:**
+
+Docker images can contain outdated OS packages with known security vulnerabilities (CVEs). In a MAANG environment, deploying unscanned images is a policy violation.
+
+**Tools:**
+1. **Docker Scout (Built-in):** `docker scout cves my-image:latest` — Scans against the Docker vulnerability database.
+2. **Trivy (Open-source, by Aqua Security):** `trivy image my-image:latest` — Most popular open-source scanner. Scans OS packages, language dependencies, and IaC configs.
+3. **Snyk Container:** Integrates with CI/CD pipelines.
+4. **GCP Artifact Registry:** Automatically scans images on push (see GCP section).
+
+**CI/CD Integration:**
+```yaml
+# GitHub Actions: Block deployment if critical CVEs are found
+- name: Scan Docker image
+  uses: aquasecurity/trivy-action@master
+  with:
+    image-ref: 'my-app:${{ github.sha }}'
+    severity: 'CRITICAL,HIGH'
+    exit-code: '1'  # Fail the pipeline on critical vulnerabilities
+```
+
+---
+
+### Q12: How do you use Docker for ML/GPU workloads?
+
+**Answer:**
+
+Standard Docker containers cannot access GPUs. You need the **NVIDIA Container Toolkit** (nvidia-docker).
+
+**Setup:**
+```bash
+# Install NVIDIA Container Toolkit
+sudo apt-get install -y nvidia-container-toolkit
+sudo systemctl restart docker
+
+# Run a GPU-enabled container
+docker run --gpus all nvidia/cuda:12.0-runtime-ubuntu22.04 nvidia-smi
+```
+
+**ML-Specific Dockerfile:**
+```dockerfile
+FROM nvidia/cuda:12.0-cudnn8-runtime-ubuntu22.04
+
+# Install Python and ML dependencies
+RUN apt-get update && apt-get install -y python3 python3-pip
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+CMD ["python3", "serve_model.py"]
+```
+
+**Key Considerations:**
+- **Base Image:** Use `nvidia/cuda` for GPU workloads, not `python:3.11-slim`.
+- **CUDA Compatibility:** The CUDA version in the image must match (or be older than) the host's NVIDIA driver version.
+- **Model Weights:** Don't bake 10GB model weights into the Docker image. Mount them as volumes or download them on startup.
+- **Shared Memory:** Set `--shm-size=8g` for PyTorch DataLoader multi-worker setups (default 64MB is too small).
+
+---
+
+*End of Docker Theory — 12 comprehensive questions covering Containers vs VMs, Dockerfile optimization, Layer Caching, Docker Compose, Volumes, Multi-Stage Builds, Networking, Health Checks, Security Scanning, and GPU Workloads.*
+

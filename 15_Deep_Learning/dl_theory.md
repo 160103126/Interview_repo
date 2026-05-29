@@ -157,4 +157,122 @@ After Transfer Learning converges, "Unfreeze" the last few convolutional layers 
 
 ---
 
-*End of Deep Learning Theory — 10 questions covering Neural Network internals, CNNs, LSTMs, Optimization algorithms, and Transfer Learning.*
+### Q11: Explain Batch Normalization internals.
+
+**Answer:**
+
+Batch Normalization (BatchNorm) normalizes the inputs of each layer to have zero mean and unit variance across the mini-batch.
+
+**The Math:**
+1. Compute mean and variance across the batch: `μ_B = mean(x)`, `σ²_B = var(x)`
+2. Normalize: `x̂ = (x - μ_B) / sqrt(σ²_B + ε)` (ε is a tiny constant for numerical stability)
+3. Scale and Shift: `y = γ * x̂ + β` (γ and β are learnable parameters)
+
+**Why step 3?** Without learnable parameters, BatchNorm would force every layer's activations into the same distribution, destroying the network's ability to represent complex functions. γ and β let the network "undo" the normalization if needed.
+
+**During Inference:** You cannot compute batch statistics from a single input. BatchNorm uses running averages of mean and variance computed during training instead.
+
+**Benefits:** Stabilizes training, allows higher learning rates, provides a slight regularization effect (because batch statistics introduce noise).
+
+---
+
+### Q12: What is the Exploding Gradient problem? How do you solve it?
+
+**Answer:**
+
+The opposite of Vanishing Gradients. In deep networks, if weight matrices have eigenvalues > 1, gradients grow exponentially during backpropagation.
+
+**Symptoms:** Loss becomes `NaN` or `inf`. Weights jump wildly. Training crashes.
+
+**Solutions:**
+1. **Gradient Clipping:** The most common fix. If the gradient norm exceeds a threshold (e.g., 1.0), scale it down proportionally.
+   ```python
+   torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+   ```
+2. **Weight Initialization:** Use He initialization (for ReLU) or Xavier/Glorot initialization (for Sigmoid/Tanh). These set initial weights to values that preserve gradient variance.
+3. **Batch Normalization:** Keeps activations in a controlled range.
+4. **LSTMs / GRUs:** Their gating mechanisms naturally prevent gradients from exploding in sequential models.
+
+---
+
+### Q13: Compare Learning Rate Schedulers.
+
+**Answer:**
+
+A fixed learning rate is suboptimal. Start with a high learning rate (fast convergence) and decay it over time (fine-grained optimization near the minimum).
+
+| Scheduler | Behavior | Best For |
+|---|---|---|
+| **Step Decay** | Drops LR by a factor every N epochs (e.g., /10 every 30 epochs) | Simple baseline |
+| **Cosine Annealing** | LR follows a cosine curve from high to low | Modern deep learning (used in most LLM training) |
+| **Warmup + Cosine** | Starts near 0, linearly ramps up for N steps, then cosine decays | Transformers/LLMs (prevents early instability from large gradients) |
+| **ReduceLROnPlateau** | Monitors val loss; if it plateaus for N epochs, reduce LR | Tabular data, CNNs |
+| **One-Cycle Policy** | LR goes up then down in one super-cycle | Fast convergence (fastai) |
+
+**The Warmup Pattern (Critical for LLMs):**
+```python
+# Linear warmup for 1000 steps, then cosine decay
+scheduler = get_cosine_schedule_with_warmup(
+    optimizer, num_warmup_steps=1000, num_training_steps=100000
+)
+```
+
+---
+
+### Q14: What is Mixed Precision Training (FP16)?
+
+**Answer:**
+
+Modern GPUs (NVIDIA A100, H100) have special hardware (Tensor Cores) that compute FP16 operations **2x-8x faster** than FP32.
+
+**Mixed Precision Training:**
+- **Forward Pass:** Use FP16 for activations and weights → faster compute, less memory.
+- **Backward Pass:** Compute gradients in FP16 → faster.
+- **Weight Update:** Keep a **master copy** of weights in FP32 for numerical precision during the optimizer step.
+
+**Why not just use FP16 everywhere?**
+FP16 has a limited range (max ~65,504). Very small gradients (< 6e-8) become zero ("underflow"), causing training to stall. **Loss Scaling** solves this by multiplying the loss by a large factor before backprop, and dividing the gradients by the same factor afterward.
+
+**Implementation (PyTorch):**
+```python
+scaler = torch.cuda.amp.GradScaler()
+with torch.cuda.amp.autocast():
+    output = model(input)
+    loss = criterion(output, target)
+scaler.scale(loss).backward()
+scaler.step(optimizer)
+scaler.update()
+```
+
+**Impact:** Reduces GPU memory by ~50% and speeds up training by 2x-3x with virtually no accuracy loss.
+
+---
+
+### Q15: What is Gradient Accumulation? When do you need it?
+
+**Answer:**
+
+**The Problem:** Training large models (LLMs, ViTs) often requires batch sizes of 512+ for stable convergence. But a batch size of 512 on a single GPU might require 80GB+ VRAM — more than most GPUs have.
+
+**Gradient Accumulation:** Simulates a large batch size by splitting it across multiple forward passes.
+
+```python
+accumulation_steps = 4  # Effective batch = 4 * 32 = 128
+optimizer.zero_grad()
+
+for i, (input, target) in enumerate(dataloader):  # dataloader batch_size = 32
+    output = model(input)
+    loss = criterion(output, target) / accumulation_steps  # Scale loss
+    loss.backward()  # Gradients are ACCUMULATED (not zeroed)
+    
+    if (i + 1) % accumulation_steps == 0:
+        optimizer.step()  # Update weights using accumulated gradients
+        optimizer.zero_grad()
+```
+
+**Key Insight:** Instead of processing 128 samples at once (OOM), you process 4 mini-batches of 32 and accumulate the gradients before updating weights. Mathematically equivalent to a batch size of 128, but uses 4x less memory.
+
+---
+
+*End of Deep Learning Theory — 15 comprehensive questions covering Neural Networks, Activation Functions, Backpropagation, Vanishing/Exploding Gradients, Dropout, CNNs, LSTMs, Optimizers, Transfer Learning, Batch Normalization, Learning Rate Schedulers, Mixed Precision Training, and Gradient Accumulation.*
+

@@ -144,4 +144,93 @@ Standard embeddings (like OpenAI `text-embedding-ada-002`) compress an entire 50
 
 ---
 
-*End of Vector Databases Theory — Covers distance metrics, ANN algorithms, HNSW graphs, metadata filtering, Hybrid Search, and ColBERT.*
+### Q9: Explain IVF-Flat vs IVF-PQ Index Types.
+
+**Answer:**
+
+HNSW is the gold standard but has a massive memory footprint (the full graph must reside in RAM). For billion-scale datasets, you need more memory-efficient indexes.
+
+**IVF-Flat (Inverted File with Flat storage):**
+1. **Training:** K-Means clusters all vectors into `nlist` partitions (e.g., 1024 clusters).
+2. **Search:** The query vector is compared to all cluster centroids. Only the top `nprobe` closest clusters are searched exhaustively.
+- **Trade-off:** Exact recall within searched clusters, but you might miss vectors in unchecked clusters. Increase `nprobe` for better recall (but slower).
+
+**IVF-PQ (Inverted File with Product Quantization):**
+Same as IVF-Flat but compresses the vectors within each cluster using **Product Quantization**.
+- A 1536-dim vector (6KB in FP32) is compressed to just 64 bytes.
+- **Trade-off:** Massive memory savings (100x+), but search accuracy drops because distances are computed on compressed vectors.
+- **Use case:** Billion-scale datasets where HNSW's memory requirements are prohibitive.
+
+---
+
+### Q10: How do you choose an Embedding Model?
+
+**Answer:**
+
+The embedding model is the single most important component of a RAG system. A bad embedding model = bad retrieval = bad final answers, regardless of how powerful the LLM is.
+
+**Decision Framework:**
+
+| Factor | Consideration |
+|--------|--------------|
+| **Domain** | General-purpose (text-embedding-3) vs Domain-specific (fine-tuned on your data) |
+| **Dimensions** | Higher dims (3072) = more expressive but slower. Lower dims (256) = faster search, more storage-efficient |
+| **Language** | Multilingual models (BGE-M3, multilingual-e5) for non-English content |
+| **Sequence Length** | Max input tokens the model supports (512 for BERT-based, 8192 for newer models) |
+| **Cost** | OpenAI (API cost per token) vs Open-source (self-hosted, free but requires GPU) |
+
+**Benchmarking:**
+1. Check the **MTEB leaderboard** for general performance rankings.
+2. **Always evaluate on YOUR data.** Create a test set of 100 query-document pairs and measure Recall@K.
+3. Consider **Matryoshka models** (e.g., Nomic Embed) that allow dimension truncation without retraining.
+
+---
+
+### Q11: What are Namespaces, Collections, and Multi-tenancy?
+
+**Answer:**
+
+In production, you often need to store vectors for multiple users/applications in the same vector database.
+
+**Collections (Qdrant, Milvus) / Indexes (Pinecone):**
+A logical grouping of vectors that share the same schema (dimension, distance metric). Think of it as a "table" in a relational database.
+
+**Namespaces (Pinecone):**
+A subdivision within a collection/index. Each namespace is a separate partition of vectors.
+- **Use case:** Multi-tenancy. `namespace="customer_123"` isolates Customer 123's data from Customer 456's data within the same index.
+- Queries are scoped to a single namespace — Customer 123 can never accidentally retrieve Customer 456's vectors.
+
+**Multi-tenancy Patterns:**
+1. **Namespace per tenant:** Simple, good for <10K tenants. All tenants share the same index infrastructure.
+2. **Collection per tenant:** Stronger isolation, independent scaling, but higher operational overhead.
+3. **Metadata filtering:** Store all tenants in one collection, add `tenant_id` metadata, and filter at query time. (Can cause performance issues with many tenants.)
+
+---
+
+### Q12: What is Reranking and why is it essential for RAG?
+
+**Answer:**
+
+Bi-encoder retrieval (embedding + cosine similarity) is fast but imprecise. It encodes the query and document *independently* — the query embedding has no awareness of the specific document, and vice versa.
+
+**Reranking** adds a **Cross-Encoder** stage that processes the query and each candidate document *together*, allowing deep token-level interaction.
+
+**Two-Stage Retrieval Pipeline:**
+```
+[User Query] → Bi-Encoder (fast, retrieve top-100) → Cross-Encoder Reranker (slow, rerank top-100 → top-5) → LLM
+```
+
+**Why it works:**
+- The Bi-Encoder processes 1 million documents in milliseconds (independent encoding, pre-computed).
+- The Cross-Encoder only processes 100 documents (query-document pairs), computing token-level attention between the query and each document.
+- Quality boost: Retrieval Recall@5 often improves by 15-25% after reranking.
+
+**Popular Rerankers:**
+- **Cohere Rerank API** (managed service)
+- **BGE-Reranker** (open-source, self-hosted)
+- **ColBERT** (multi-vector reranking via late interaction)
+
+---
+
+*End of Vector Databases Theory — 12 comprehensive questions covering Distance Metrics, ANN algorithms, HNSW, Metadata Filtering, Hybrid Search, ColBERT, DB Comparison, IVF Indexes, Embedding Selection, Multi-tenancy, and Reranking.*
+
